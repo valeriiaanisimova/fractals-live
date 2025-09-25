@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Живые фракталы</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1c2c, #0a0c15);
+            color: #e0e0ff;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        #fractal-btn {
+            position: relative;
+            z-index: 10;
+            background: linear-gradient(45deg, #00a2ff, #d400ff);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1.4rem;
+            font-weight: 600;
+            transition: all 0.6s ease;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            animation: pulse 3s infinite;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        
+        #fractal-btn.visible {
+            opacity: 1;
+            transform: translateY(0);
+            animation: fadeIn 2s forwards, pulse 3s infinite;
+        }
+        
+        #fractal-btn:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 15px 35px rgba(212, 0, 255, 0.6);
+        }
+        
+        #fractal-btn:active {
+            transform: translateY(2px) scale(0.98);
+        }
+        
+        #gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+/*         .progress-container {
+            position: absolute;
+            bottom: 50px;
+            width: 80%;
+            max-width: 600px;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            z-index: 5;
+            opacity: 0;
+            transition: opacity 1.2s;
+        } */
+        
+/*         .progress-container.visible {
+            opacity: 1;
+        } */
+        
+/*         .progress-bar {
+            height: 100%;
+            width: 0;
+            background: linear-gradient(90deg, #00f5ff, #ff00c8);
+            border-radius: 10px;
+            transition: width 1s ease-out;
+        } */
+        
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(20, 25, 40, 0.8);
+            border-radius: 15px;
+            padding: 15px;
+            max-width: 300px;
+            z-index: 5;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 1.2s ease;
+            border: 1px solid rgba(0, 245, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        .info-panel.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .info-title {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            color: #00f5ff;
+            padding-bottom: 5px;
+            border-bottom: 1px solid rgba(0, 245, 255, 0.3);
+        }
+        
+        .info-content {
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+        
+        .title {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: 2rem;
+            background: linear-gradient(90deg, #00f5ff, #ff00c8);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 15px rgba(0, 245, 255, 0.3);
+            z-index: 5;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 1.2s ease 0.5s;
+        }
+        
+        .title.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .shape-transition {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: rgba(0, 245, 255, 0.2);
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            z-index: 2;
+            pointer-events: none;
+            transition: all 2s cubic-bezier(0.17, 0.67, 0.83, 0.67);
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(212, 0, 255, 0.7); }
+            70% { box-shadow: 0 0 0 20px rgba(212, 0, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(212, 0, 255, 0); }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes morph {
+            0% { 
+                border-radius: 50%; 
+                transform: translate(-50%, -50%) scale(0.8); 
+            }
+            25% { 
+                border-radius: 35%; 
+                transform: translate(-50%, -50%) scale(1.2); 
+            }
+            50% { 
+                border-radius: 20%; 
+                transform: translate(-50%, -50%) scale(0.9); 
+            }
+            75% { 
+                border-radius: 10%; 
+                transform: translate(-50%, -50%) scale(1.1); 
+            }
+            100% { 
+                border-radius: 0; 
+                transform: translate(-50%, -50%) scale(1); 
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1 class="title">Живые фракталы</h1>
+    
+    <canvas id="gameCanvas"></canvas>
+    
+    <div class="shape-transition" id="shapeTransition"></div>
+    
+    <!-- <div class="progress-container">
+        <div class="progress-bar"></div>
+    </div> -->
+    
+    <div class="info-panel">
+        <div class="info-title">О текущем фрактале:</div>
+        <div class="info-content" id="preset-info-content">
+            Загрузка информации...
+        </div>
+    </div>
+    
+    <button id="fractal-btn">Создать фрактал</button>
+
+    <script>
+        class LSystemArtist {
+            constructor() {
+                // ==== Пресеты ====
+                this.presets = [
+                    {
+                        name: "Снежинка Коха",
+                        axiom: "F++F++F",
+                        rules: { "F": "F-F++F-F" },
+                        angle: 60,
+                        iterations: 4,
+                        length: 6,
+                        color: '#00f5ff',
+                        animation: {
+                            type: 'rotate',
+                            speed: 0.3
+                        }
+                    },
+                    {
+                        name: "Куст",
+                        axiom: "F",
+                        rules: { "F": "FF+[+F-F-F]-[-F+F+F]" },
+                        angle: 25,
+                        iterations: 4,
+                        length: 5,
+                        color: '#00FF9D',
+                        animation: {
+                            type: 'sway',
+                            speed: 1.5,
+                            amplitude: 0.05
+                        }
+                    },
+                    {
+                        name: "Спираль",
+                        axiom: "F",
+                        rules: { "F": "F[+FF][-FF]F[-F][+F]F" },
+                        angle: 35,
+                        iterations: 3,
+                        length: 8,
+                        color: '#ff00c8',
+                        animation: {
+                            type: 'pulse',
+                            speed: 2,
+                            amplitude: 0.03
+                        }
+                    },
+                    {
+                        name: "Паутина",
+                        axiom: "F-F-F-F",
+                        rules: { "F": "FF-F-F-F-F-F+F" },
+                        angle: 90,
+                        iterations: 3,
+                        length: 10,
+                        color: '#d400ff',
+                        animation: {
+                            type: 'rotate',
+                            speed: 0.4
+                        }
+                    },
+                    {
+                        name: "Пальма",
+                        axiom: "F",
+                        rules: { "F": "F[+F]F[-F]F" },
+                        angle: 30,
+                        iterations: 4,
+                        length: 6,
+                        color: '#00FF9D',
+                        animation: {
+                            type: 'sway',
+                            speed: 1.2,
+                            amplitude: 0.07
+                        }
+                    }
+                ];
+
+                // ==== Текущий пресет ====
+                this.currentPreset = 0;
+                this.rules = {};
+                this.angle = 0;
+                this.iterations = 0;
+                this.axiom = '';
+                this.lineLength = 6;
+                this.currentColor = '#00f5ff';
+
+                // ==== Параметры холста ====
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+
+                // ==== Поля для морфинга (перехода) ====
+                this.oldAnimationSteps = [];
+                this.newAnimationSteps = [];
+                this.morphing = false;         // флаг, что идёт морфинг
+                this.morphStartTime = 0;        // время начала морфинга
+                this.morphProgress = 0;         // от 0 до 1
+                this.morphDuration = 4.0;       // УВЕЛИЧИЛИ длительность морфинга (в секундах)
+
+                // ==== Анимация "жизни" фрактала ====
+                this.liveAnimationActive = false;
+                this.liveAnimationTime = 0;
+                this.centerX = 0;
+                this.centerY = 0;
+
+                // ==== Масштабирование/сдвиги для рисования ====
+                this.scale = 1.0;
+                this.offsetX = 0;
+                this.offsetY = 0;
+            }
+
+            init() {
+                // Устанавливаем размеры canvas
+                this.canvas.width = this.canvas.offsetWidth;
+                this.canvas.height = this.canvas.offsetHeight;
+            }
+
+            loadPreset(index) {
+                const preset = this.presets[index];
+                this.currentPreset = index;
+                this.axiom = preset.axiom;
+                this.rules = preset.rules;
+                this.angle = preset.angle;
+                this.iterations = preset.iterations;
+                this.currentColor = preset.color;
+                this.lineLength = preset.length;
+                this.updatePresetInfo();
+                return preset;
+            }
+
+            updatePresetInfo() {
+                const p = this.presets[this.currentPreset];
+                document.getElementById('preset-info-content').innerHTML =
+                    `Название: ${p.name}<br>` +
+                    `Аксиома: ${p.axiom}<br>` +
+                    `Правила: F → ${p.rules["F"]}<br>` +
+                    `Угол: ${p.angle}°<br>` +
+                    `Итерации: ${p.iterations}`;
+            }
+
+            generateDrawing(iterations) {
+                let drawing = this.axiom;
+                for (let i = 0; i < iterations; i++) {
+                    let next = '';
+                    for (let ch of drawing) {
+                        next += this.rules[ch] || ch;
+                    }
+                    drawing = next;
+                }
+                return drawing;
+            }
+
+            /**
+             * Построить чистый массив отрезков (без модификации this). 
+             * Возвращает [{ type: 'line', x1, y1, x2, y2, color }, ...].
+             */
+            _buildStepsArray(drawingString, color, angle, stepLength) {
+                let tx = 0, ty = 0;
+                let dir = -90;
+                const history = [];
+                const steps = [];
+
+                for (let ch of drawingString) {
+                    if (ch === 'F') {
+                        const rad = dir * Math.PI / 180;
+                        const nx = tx + Math.cos(rad) * stepLength;
+                        const ny = ty + Math.sin(rad) * stepLength;
+                        steps.push({ type: 'line', x1: tx, y1: ty, x2: nx, y2: ny, color: color });
+                        tx = nx; ty = ny;
+                    } else if (ch === '+') {
+                        dir += angle;
+                    } else if (ch === '-') {
+                        dir -= angle;
+                    } else if (ch === '[') {
+                        history.push({ x: tx, y: ty, dir: dir });
+                    } else if (ch === ']') {
+                        if (history.length > 0) {
+                            const st = history.pop();
+                            tx = st.x; ty = st.y; dir = st.dir;
+                        }
+                    }
+                    // Игнорируем всё остальное
+                }
+                return steps;
+            }
+
+            /**
+             * Выравниваем длину двух массивов отрезков (дублируем последний элемент, если один из массивов короче).
+             */
+            _alignStepArrays(oldArr, newArr) {
+                const lenA = oldArr.length;
+                const lenB = newArr.length;
+                if (lenA === lenB) {
+                    return { a: oldArr.slice(), b: newArr.slice() };
+                }
+                const maxLen = Math.max(lenA, lenB);
+                const a = [];
+                const b = [];
+                for (let i = 0; i < maxLen; i++) {
+                    const iA = Math.min(i, lenA - 1);
+                    const iB = Math.min(i, lenB - 1);
+                    a.push(oldArr[iA]);
+                    b.push(newArr[iB]);
+                }
+                return { a, b };
+            }
+
+            /**
+             * Считаем scale и offset (центровка) для любого массива отрезков.
+             */
+            _calculateScaleForArray(arr) {
+                if (!arr || arr.length === 0) return;
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                for (const st of arr) {
+                    if (st.type === 'line') {
+                        minX = Math.min(minX, st.x1, st.x2);
+                        minY = Math.min(minY, st.y1, st.y2);
+                        maxX = Math.max(maxX, st.x1, st.x2);
+                        maxY = Math.max(maxY, st.y1, st.y2);
+                    }
+                }
+                const w = maxX - minX;
+                const h = maxY - minY;
+                if (w === 0 || h === 0) return;
+                const scaleX = (this.canvas.width * 0.8) / w;
+                const scaleY = (this.canvas.height * 0.8) / h;
+                this.scale = Math.min(scaleX, scaleY);
+                this.offsetX = (this.canvas.width - w * this.scale) / 2 - minX * this.scale;
+                this.offsetY = (this.canvas.height - h * this.scale) / 2 - minY * this.scale;
+                
+                // Вычисляем центр фрактала для анимации
+                this.centerX = minX + w/2;
+                this.centerY = minY + h/2;
+            }
+
+            /**
+             * Линейная интерполяция между двумя цветами #rrggbb.
+             */
+            _lerpColor(colA, colB, t) {
+                const a = parseInt(colA.slice(1), 16);
+                const b = parseInt(colB.slice(1), 16);
+                const ar = (a >> 16) & 0xff, ag = (a >> 8) & 0xff, ab = a & 0xff;
+                const br = (b >> 16) & 0xff, bg = (b >> 8) & 0xff, bb = b & 0xff;
+                const rr = Math.round(ar + (br - ar) * t);
+                const rg = Math.round(ag + (bg - ag) * t);
+                const rb = Math.round(ab + (bb - ab) * t);
+                const r = (rr << 16) | (rg << 8) | rb;
+                return '#' + r.toString(16).padStart(6, '0');
+            }
+
+            /**
+             * Строим текущий промежуточный массив this.animationSteps по morphProgress.
+             * t ∈ [0,1]
+             */
+            _buildMorphSteps(t) {
+                // Используем easing для более плавного окончания анимации
+                const easedT = this.easeOutQuad(t);
+                
+                const steps = [];
+                const len = this.oldAnimationSteps.length;
+                for (let i = 0; i < len; i++) {
+                    const a = this.oldAnimationSteps[i];
+                    const b = this.newAnimationSteps[i];
+                    const x1 = a.x1 + (b.x1 - a.x1) * easedT;
+                    const y1 = a.y1 + (b.y1 - a.y1) * easedT;
+                    const x2 = a.x2 + (b.x2 - a.x2) * easedT;
+                    const y2 = a.y2 + (b.y2 - a.y2) * easedT;
+                    const color = this._lerpColor(a.color, b.color, easedT);
+                    steps.push({ type: 'line', x1, y1, x2, y2, color });
+                }
+                this.animationSteps = steps;
+            }
+            
+            /**
+             * Функция плавности для замедления в конце анимации
+             */
+            easeOutQuad(t) {
+                return t * (2 - t);
+            }
+            
+            /**
+             * Анимация "жизни" для фрактала
+             */
+            applyLifeAnimation() {
+                if (!this.liveAnimationActive) return;
+                
+                const preset = this.presets[this.currentPreset];
+                const animType = preset.animation.type;
+                const animSpeed = preset.animation.speed;
+                const animAmplitude = preset.animation.amplitude || 0;
+                
+                const centerX = this.centerX * this.scale + this.offsetX;
+                const centerY = this.centerY * this.scale + this.offsetY;
+                
+                this.ctx.save();
+                this.ctx.translate(centerX, centerY);
+                
+                switch(animType) {
+                    case 'rotate':
+                        this.ctx.rotate(Math.sin(this.liveAnimationTime * animSpeed) * 0.1);
+                        break;
+                        
+                    case 'sway':
+                        const sway = Math.sin(this.liveAnimationTime * animSpeed) * animAmplitude;
+                        this.ctx.rotate(sway);
+                        break;
+                        
+                    case 'pulse':
+                        const pulse = 1 + Math.sin(this.liveAnimationTime * animSpeed) * animAmplitude;
+                        this.ctx.scale(pulse, pulse);
+                        break;
+                }
+                
+                this.ctx.translate(-centerX, -centerY);
+            }
+            
+            /**
+             * Восстанавливаем состояние после анимации
+             */
+            restoreAfterAnimation() {
+                if (!this.liveAnimationActive) return;
+                this.ctx.restore();
+            }
+
+            /**
+             * Обновление состояния (вызывается каждую рамку).
+             */
+            update(timestamp) {
+                const now = performance.now();
+                const dt = (now - (this.lastTime || now)) / 1000;
+                this.lastTime = now;
+
+                if (this.morphing) {
+                    // Считаем прогресс T ∈ [0,1]
+                    const elapsed = (now - this.morphStartTime) / 1000;
+                    this.morphProgress = Math.min(elapsed / this.morphDuration, 1);
+
+                    // Строим «промежуточное» состояние
+                    this._buildMorphSteps(this.morphProgress);
+
+                    // Обновляем прогресс-бар
+                    // document.querySelector('.progress-bar').style.width = `${this.morphProgress * 100}%`;
+
+                    // Если конец морфинга
+                    if (this.morphProgress >= 1) {
+                        this.morphing = false;
+                        this.liveAnimationActive = true;
+                        this.liveAnimationTime = 0;
+                        
+                        // Разблокируем кнопку
+                        document.getElementById('fractal-btn').textContent = 'Поменять фрактал';
+                        document.getElementById('fractal-btn').disabled = false;
+                        
+                        // Показываем панель информации с задержкой
+                        setTimeout(() => {
+                            document.querySelector('.info-panel').classList.add('visible');
+                            document.querySelector('.title').classList.add('visible');
+                        }, 500);
+                    }
+                }
+                
+                // Обновляем время анимации "жизни"
+                if (this.liveAnimationActive) {
+                    this.liveAnimationTime += dt;
+                }
+            }
+
+            /**
+             * Рисует текущие this.animationSteps.
+             */
+            draw() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.ctx.fillStyle = '#0A0C15';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                if (!this.animationSteps || this.animationSteps.length === 0) return;
+
+                // Применяем анимацию "жизни"
+                if (this.liveAnimationActive) {
+                    this.applyLifeAnimation();
+                }
+
+                // Толщина и свечение зависят от прогресса морфинга
+                const glowIntensity = 15 + 10 * Math.sin(this.morphProgress * Math.PI);
+                this.ctx.lineWidth = 2 + 1 * this.morphProgress;
+                this.ctx.lineCap = 'round';
+
+                // Рисуем все отрезки
+                for (const step of this.animationSteps) {
+                    if (step.type === 'line') {
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(
+                            step.x1 * this.scale + this.offsetX,
+                            step.y1 * this.scale + this.offsetY
+                        );
+                        this.ctx.lineTo(
+                            step.x2 * this.scale + this.offsetX,
+                            step.y2 * this.scale + this.offsetY
+                        );
+                        this.ctx.strokeStyle = step.color;
+                        this.ctx.shadowColor = step.color;
+                        this.ctx.shadowBlur = glowIntensity;
+                        this.ctx.stroke();
+                    }
+                }
+                this.ctx.shadowBlur = 0;
+                
+                // Восстанавливаем состояние после анимации
+                if (this.liveAnimationActive) {
+                    this.restoreAfterAnimation();
+                }
+            }
+        }
+
+        // === Инициализация страницы ===
+        window.onload = function() {
+            const gameCanvas = document.getElementById('gameCanvas');
+            const fractalBtn = document.getElementById('fractal-btn');
+            const shapeTransition = document.getElementById('shapeTransition');
+            const artist = new LSystemArtist();
+            artist.init();
+            let lastTime = 0;
+
+            // Сделать кнопку «плавно появляющейся»
+            setTimeout(() => {
+                fractalBtn.classList.add('visible');
+                // document.querySelector('.progress-container').classList.add('visible');
+            }, 800);
+
+            fractalBtn.addEventListener('click', () => {
+                // Если уже идёт морфинг — ничего не делаем
+                if (artist.morphing) return;
+
+                artist.liveAnimationActive = false;
+                fractalBtn.textContent = 'Создаётся...';
+                fractalBtn.disabled = true;
+
+                // Скрываем предыдущие панели
+                document.querySelector('.info-panel').classList.remove('visible');
+                document.querySelector('.title').classList.remove('visible');
+                shapeTransition.style.display = 'none';
+
+                // Выбираем новый пресет
+                const presetIndex = Math.floor(Math.random() * artist.presets.length);
+                artist.loadPreset(presetIndex);
+
+                // Генерируем две строки L-системы: простую (iter-1) и сложную (iter)
+                const simpleIter = Math.max(0, artist.iterations - 1);
+                const complexIter = artist.iterations;
+                const simpleStr = artist.generateDrawing(simpleIter);
+                const complexStr = artist.generateDrawing(complexIter);
+
+                // Получаем массив отрезков для обеих конфигураций
+                const oldArr = artist._buildStepsArray(simpleStr, artist.currentColor, artist.angle, artist.lineLength);
+                const newArr = artist._buildStepsArray(complexStr, artist.currentColor, artist.angle, artist.lineLength);
+
+                // Выровняем длины массивов
+                const { a, b } = artist._alignStepArrays(oldArr, newArr);
+                artist.oldAnimationSteps = a;
+                artist.newAnimationSteps = b;
+
+                // Рассчитываем единый масштаб по «новому» (сложному) фракталу
+                artist._calculateScaleForArray(artist.newAnimationSteps);
+
+                // Запускаем морфинг
+                artist.morphProgress = 0;
+                artist.morphing = true;
+                artist.morphStartTime = performance.now();
+
+                // Показываем анимацию формы
+                shapeTransition.style.background = `radial-gradient(circle at center, ${artist.currentColor}40, transparent 70%)`;
+                shapeTransition.style.opacity = '0.7';
+                shapeTransition.style.display = 'block';
+                shapeTransition.style.animation = 'morph 2.5s cubic-bezier(0.17, 0.67, 0.83, 0.67) forwards';
+                setTimeout(() => {
+                    shapeTransition.style.opacity = '0';
+                    shapeTransition.style.animation = 'none';
+                }, 2500);
+            });
+
+            // Если изменился размер окна, пересчитаем размеры canvas
+            function handleResize() {
+                gameCanvas.width = gameCanvas.offsetWidth;
+                gameCanvas.height = gameCanvas.offsetHeight;
+                if (!artist.morphing && artist.newAnimationSteps.length > 0) {
+                    artist._calculateScaleForArray(artist.newAnimationSteps);
+                }
+            }
+            window.addEventListener('resize', handleResize);
+
+            // Игровой цикл
+            function gameLoop(timestamp) {
+                artist.update(timestamp);
+                artist.draw();
+                requestAnimationFrame(gameLoop);
+            }
+            gameLoop();
+        };
+    </script>
+</body>
+</html>
